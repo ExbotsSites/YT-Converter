@@ -8,7 +8,7 @@ from io import BytesIO
 
 st.title("YouTube Downloader Online con CAPTCHA")
 
-# --- CAPTCHA ---
+# --- Funzione per generare CAPTCHA ---
 def generate_captcha():
     captcha_text = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
     image = ImageCaptcha()
@@ -16,20 +16,25 @@ def generate_captcha():
     image_bytes = BytesIO(image_data.read())
     return captcha_text, image_bytes
 
-captcha_text, captcha_image = generate_captcha()
-st.image(captcha_image)
+# --- Inizializza CAPTCHA nella sessione ---
+if "captcha_text" not in st.session_state or "captcha_image" not in st.session_state:
+    st.session_state.captcha_text, st.session_state.captcha_image = generate_captcha()
+
+st.image(st.session_state.captcha_image)
 user_input = st.text_input("Inserisci il testo del CAPTCHA:")
 
 # --- Link YouTube e formato ---
-url = st.text_input("Inserisci il link del video YouTube:")  # campo vuoto
+url = st.text_input("Inserisci il link del video YouTube:")
 format_choice = st.radio("Formato:", ("Video", "Audio"))
 
 # --- Pulsante Scarica ---
 if st.button("Scarica"):
     if not url:
         st.warning("Inserisci un link valido!")
-    elif user_input != captcha_text:
+    elif user_input != st.session_state.captcha_text:
         st.error("CAPTCHA errato. Riprova.")
+        # Rigenera CAPTCHA se sbagliato
+        st.session_state.captcha_text, st.session_state.captcha_image = generate_captcha()
     else:
         try:
             st.info("Inizio download...")
@@ -53,6 +58,8 @@ if st.button("Scarica"):
                 )
 
             st.success("Download completato! Clicca il pulsante per salvare il file sul PC.")
+            # Rigenera CAPTCHA dopo download
+            st.session_state.captcha_text, st.session_state.captcha_image = generate_captcha()
 
         except Exception as e:
             st.error(f"Errore durante il download: {e}")
