@@ -1,26 +1,39 @@
 import streamlit as st
 import yt_dlp
 import os
+from captcha.image import ImageCaptcha
+import random
+import string
+from io import BytesIO
 
-st.title("YouTube Downloader Online (senza FFmpeg)")
+st.title("YouTube Downloader Online con CAPTCHA")
 
-# Link già inserito come esempio
-url = st.text_input(
-    "Inserisci il link del video YouTube:", 
-    value="https://youtu.be/pxA7z_IXyXM?si=pNgvF9eVmyC4JIjc"
-)
+# --- CAPTCHA ---
+def generate_captcha():
+    captcha_text = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
+    image = ImageCaptcha()
+    image_data = image.generate(captcha_text)
+    image_bytes = BytesIO(image_data.read())
+    return captcha_text, image_bytes
 
-# Scegli formato
+captcha_text, captcha_image = generate_captcha()
+st.image(captcha_image)
+user_input = st.text_input("Inserisci il testo del CAPTCHA:")
+
+# --- Link YouTube e formato ---
+url = st.text_input("Inserisci il link del video YouTube:")  # campo vuoto
 format_choice = st.radio("Formato:", ("Video", "Audio"))
 
+# --- Pulsante Scarica ---
 if st.button("Scarica"):
     if not url:
         st.warning("Inserisci un link valido!")
+    elif user_input != captcha_text:
+        st.error("CAPTCHA errato. Riprova.")
     else:
         try:
             st.info("Inizio download...")
 
-            # Scarica senza merge: nessun FFmpeg richiesto
             ydl_opts = {
                 'format': 'best' if format_choice == "Video" else 'bestaudio',
                 'outtmpl': '%(title)s.%(ext)s',
@@ -31,7 +44,6 @@ if st.button("Scarica"):
                 info = ydl.extract_info(url, download=True)
                 filename = ydl.prepare_filename(info)
 
-            # Pulsante per scaricare sul PC
             with open(filename, "rb") as f:
                 st.download_button(
                     label="Scarica sul tuo PC",
